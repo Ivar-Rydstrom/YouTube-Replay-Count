@@ -1,0 +1,61 @@
+// ==UserScript==
+// @name         YouTube Replay Counter
+// @match        *://www.youtube.com/watch*
+// @author       Ivar Rydstrom
+// @run-at       document-start
+// @grant        GM_log
+// ==/UserScript==
+
+var count;
+
+var frame = document.createElement('iframe');
+    frame.src = 'https://www.youtube.com/embed/' + getVidId();
+    frame.id = 'frame';
+
+function script() {
+    document.body.appendChild(frame);
+    setTimeout(function () { updateCount(); updateViews(); }, 1000);
+    var vid = document.getElementsByClassName('video-stream')[0];
+    vid.onended = function() {
+        updateCookie();
+    };
+};
+
+function updateCookie() {
+    var crossCookies = frame.contentDocument.cookie;
+    if(crossCookies.includes('plays=')) {
+        count = crossCookies.split("plays=").pop().split(';').shift();
+        count++
+    } else {
+        count = 1;
+    };
+    var date = new Date();
+    date.setFullYear(date.getFullYear() + 10);
+    document.cookie = "plays="+count+ "; expires="+date.toUTCString()+"; path=/embed/"+getVidId()+"; SameSite; Secure;";
+    updateViews();
+};
+
+function updateCount() {
+    var crossCookies = frame.contentDocument.cookie;
+    if(crossCookies.includes('plays=')) {
+        count = crossCookies.split("plays=").pop().split(';').shift();
+    } else {
+        count = 0;
+    };
+};
+
+function getVidId() {
+    var id = document.location.href.split('?v=')[1];
+    if (id.includes('&')) {
+        return id.split('&')[0];
+    } else {
+        return id;
+    };
+};
+
+function updateViews() {
+    var viewCount = document.getElementsByClassName('watch-view-count')[0];
+    viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' plays'
+};
+
+window.onload = function() { script(); };
