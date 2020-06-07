@@ -6,7 +6,12 @@
 // @grant        GM_log
 // ==/UserScript==
 
+var threshold = 0.75;
 var count;
+var timeLast;
+var vid;
+var time;
+var locked = false;
 
 var frame = document.createElement('iframe');
     frame.src = 'https://www.youtube.com/embed/' + getVidId();
@@ -14,25 +19,56 @@ var frame = document.createElement('iframe');
 
 function script() {
     document.body.appendChild(frame);
-    setTimeout(function () { updateCount(); updateViews(); }, 1000);
-    var vid = document.getElementsByClassName('video-stream')[0];
-    vid.onended = function() {
-        updateCookie();
-    };
+    vid = document.getElementsByClassName('video-stream')[0];
+    setTimeout(function () {
+        updateCount();
+        updateViews();
+        if (frame.contentDocument.cookie.includes('watched')) {
+            if (Number(frame.contentDocument.cookie.split('watched=').pop().split(';').shift()) >= threshold) {
+                locked = true;
+            };
+        };
+    }, 1000);
+    timeLast = vid.currentTime;
+    vid.onplay = updateCookie;
+    vid.onended = updateCookie;
+
+    setInterval(updateCookie, vid.duration/20*1000);
 };
 
 function updateCookie() {
     var crossCookies = frame.contentDocument.cookie;
-    if(crossCookies.includes('plays=')) {
-        count = crossCookies.split("plays=").pop().split(';').shift();
-        count++
+
+    // watch percentage cookie handling
+    time = vid.currentTime;
+    var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(2));
+    if (watchedDelta < 0) { watchedDelta = 0 };
+    timeLast = time;
+    var watched;
+    if (crossCookies.includes('watched')) {
+        watched = Number(crossCookies.split('watched=').pop().split(';').shift());
+        watched += watchedDelta;
+        watched = Number(watched.toFixed(2))
     } else {
-        count = 1;
+        watched = Number(watchedDelta.toFixed(2));
     };
-    var date = new Date();
-    date.setFullYear(date.getFullYear() + 10);
-    document.cookie = "plays="+count+ "; expires="+date.toUTCString()+"; path=/embed/"+getVidId()+"; SameSite; Secure;";
-    updateViews();
+    if (watched >= 1) { watched = Number((watched - 1).toFixed(2)); locked = false; };
+    document.cookie = "watched="+watched+ "; path=/embed/"+getVidId()+"; SameSite; Secure;";
+
+    // view counter cookie handling
+    if (watched >= threshold && !locked) {
+        locked = true;
+        if (crossCookies.includes('plays=')) {
+            count = crossCookies.split('plays=').pop().split(';').shift();
+            count++
+        } else {
+            count = 1;
+        };
+        var date = new Date();
+        date.setFullYear(date.getFullYear() + 10);
+        document.cookie = "plays="+count+ "; expires="+date.toUTCString()+"; path=/embed/"+getVidId()+"; SameSite; Secure;";
+        updateViews();
+    };
 };
 
 function updateCount() {
@@ -65,4 +101,4 @@ function updateViews() {
     viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' ' + plays;
 };
 
-window.onload = function() { script(); };
+window.onload = script;
