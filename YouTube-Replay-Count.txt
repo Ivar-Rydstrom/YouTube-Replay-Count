@@ -44,11 +44,16 @@ function updateCookie() {
     var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(2));
     if (watchedDelta < 0) { watchedDelta = 0 };
     timeLast = time;
+    GM_log(watchedDelta);
     var watched;
     if (crossCookies.includes('watched')) {
         watched = Number(crossCookies.split('watched=').pop().split(';').shift());
-        watched += watchedDelta;
-        watched = Number(watched.toFixed(2))
+        if (watched) {
+            watched += watchedDelta;
+            watched = Number(watched.toFixed(2))
+        } else {
+            watched = watchedDelta;
+        }
     } else {
         watched = Number(watchedDelta.toFixed(2));
     };
