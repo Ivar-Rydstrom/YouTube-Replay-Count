@@ -60,7 +60,9 @@ function updateViews() {
     } else {
         viewCount = document.getElementsByClassName('view-count')[0];
     };
-    viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' plays'
+    var plays;
+    if (count == 1) { plays = 'play' } else { plays = 'plays' };
+    viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' ' + plays;
 };
 
 window.onload = function() { script(); };
