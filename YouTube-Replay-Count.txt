@@ -54,7 +54,12 @@ function getVidId() {
 };
 
 function updateViews() {
-    var viewCount = document.getElementsByClassName('watch-view-count')[0];
+    var viewCount;
+    if (document.getElementsByClassName('watch-view-count')[0]) {
+        viewCount = document.getElementsByClassName('watch-view-count')[0];
+    } else {
+        viewCount = document.getElementsByClassName('view-count')[0];
+    };
     viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' plays'
 };
 
