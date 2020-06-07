@@ -3,7 +3,7 @@
 // @match        *://www.youtube.com/watch*
 // @author       Ivar Rydstrom
 // @run-at       document-start
-// @grant        none
+// @grant        GM_log
 // ==/UserScript==
 
 var count;
