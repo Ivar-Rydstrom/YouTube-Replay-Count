@@ -33,8 +33,9 @@ function script() {
         vid.onplay = updateCookie;
         vid.onended = updateCookie;
 
-        setInterval(updateCookie, vid.duration/20*1000);
-        GM_log('duration: ' + vid.duration);
+        vid.onloadedmetadata = function() {
+            setInterval(updateCookie, vid.duration/20*1000);
+        };
     };
 };
 
