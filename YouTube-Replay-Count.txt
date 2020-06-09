@@ -33,8 +33,22 @@ function script() {
         vid.onplay = updateCookie;
         vid.onended = updateCookie;
 
+        var started = false;
+        var interval;
+        if (vid.duration/20*1000 < 20000) {
+            interval = vid.duration/20*1000;
+        } else {
+            interval = 20000
+        };
         vid.onloadedmetadata = function() {
-            setInterval(updateCookie, vid.duration/20*1000);
+            if (!started) {
+                setInterval(updateCookie, interval);
+                started = true;
+            };
+        };
+        if ((vid.readyState == 1 || vid.readyState >= 2) && !started) {
+            setInterval(updateCookie, interval);
+            started = true;
         };
     };
 };
@@ -44,7 +58,7 @@ function updateCookie() {
 
     // watch percentage cookie handling
     time = vid.currentTime;
-    var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(2));
+    var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(3));
     if (watchedDelta < 0) { watchedDelta = 0 };
     timeLast = time;
     var watched;
@@ -52,14 +66,14 @@ function updateCookie() {
         watched = Number(crossCookies.split('watched=').pop().split(';').shift());
         if (watched) {
             watched += watchedDelta;
-            watched = Number(watched.toFixed(2))
+            watched = Number(watched.toFixed(3))
         } else {
-            watched = Number(watchedDelta.toFixed(2));
+            watched = Number(watchedDelta.toFixed(3));
         }
     } else {
-        watched = Number(watchedDelta.toFixed(2));
+        watched = Number(watchedDelta.toFixed(3));
     };
-    if (watched >= 1) { watched = Number((watched - 1).toFixed(2)); locked = false; };
+    if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); locked = false; };
     document.cookie = "watched="+watched+ "; path=/embed/"+getVidId()+"; SameSite; Secure;";
 
     // view counter cookie handling
