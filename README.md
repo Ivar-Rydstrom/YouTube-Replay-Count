@@ -1,4 +1,4 @@
-# YouTube-Replay-Count
+# YouTube-Replay-Count (YTRC)
 Implements a counter which tracks the number of re-watches on YouTube videos. Runs with Tampermonkey (or equivalent).
 
 Saves all data in cookies on the youtube.com/embed/{vidID}/ pages for videos (so don't delete www.youtube.com cookies to maintain counter).
