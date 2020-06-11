@@ -3,7 +3,13 @@
     "name": "Youtube Replay Count",
     "version": "0.1",
     "browser_action": {
-        "default_popup": "popup.html"
+        "default_popup": "popup.html",
+        "default_icon": {
+          "16": "assets/ReplayIcon16.png",
+          "32": "assets/ReplayIcon32.png",
+          "48": "assets/ReplayIcon48.png",
+          "128": "assets/ReplayIcon128.png"
+        }
     },
     "permissions": ["storage"],
     "background": {
@@ -13,9 +19,9 @@
     "content_scripts": [
       {
         "matches": [
-          "https://www.youtube.com/watch*"
+          "*://*.youtube.com/watch*"
         ],
-        "js": ["script.js"] 
+        "js": ["YTRC.js"] 
       }
     ]
   }
