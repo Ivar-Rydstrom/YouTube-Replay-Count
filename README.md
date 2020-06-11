@@ -7,4 +7,4 @@ By default, the counter triggers upon cumulatively watching 75% of a video. This
 
 Honestly, I (still) can't be bothered to figure out how GreasyFork works, so just copy-paste the contents of the YouTube-Replay-Count.txt file into a new Tampermonkey script if you want to use it.
 
-## CHROME EXTENTION VERSION IS UNDER DEVELOPMENT (under this same repository)
+## CHROME EXTENTION VERSION IS UNDER DEVELOPMENT
