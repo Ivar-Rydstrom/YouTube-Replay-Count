@@ -42,7 +42,11 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         if (request.watched) {
             watched = request.watched;
         };
-        chrome.storage.sync.set({[request.id]: {"plays": plays, "watched": watched}})
+
+        // set data in chrome storage API if not same as last cycle
+        if(!(plays == userData[request.id].plays) || !(watched == userData[request.id].watched)) {
+            chrome.storage.sync.set({[request.id]: {"plays": plays, "watched": watched}});
+        };
 
         // respond with storage data
         var response = {};
