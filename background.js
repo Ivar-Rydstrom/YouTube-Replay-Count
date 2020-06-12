@@ -1,5 +1,18 @@
 chrome.runtime.onInstalled.addListener(function() {
-
+    // set default global object in chrome storage API if needed
+    chrome.storage.sync.get("global", function(globalData) {
+        if(globalData) {
+            if(globalData.global) {
+                if(!globalData.global.threshold) {
+                    chrome.storage.sync.set({"global": {"threshold": 75}});
+                }
+            } else {
+                chrome.storage.sync.set({"global": {"threshold": 75}});
+            };
+        } else {
+            chrome.storage.sync.set({"global": {"threshold": 75}});
+        };
+    });
 });
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
@@ -7,7 +20,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     chrome.storage.sync.get(request.id, function(userData) {
 
         var plays;
-        var watched
+        var watched;
 
         // set default values for plays and watched
         if (userData[request.id]) { 
@@ -25,23 +38,18 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         // upate default values of plays and watched
         if (request.plays) {
             plays = request.plays;
-            // chrome.storage.sync.get(request.id, function (playsData) {
-            //     chrome.storage.sync.set({[request.id]: {"plays": plays, "watched": playsData[request.id].watched}})
-            // });
         };
         if (request.watched) {
             watched = request.watched;
-            // chrome.storage.sync.get(request.id, function (playsData) {
-            //     chrome.storage.sync.set({[request.id]: {"plays": playsData[request.id].plays, "watched": watched}})
-            // });
         };
         chrome.storage.sync.set({[request.id]: {"plays": plays, "watched": watched}})
 
         // respond with storage data
         var response = {};
-        chrome.storage.sync.get(request.id, function (playsData) {
+        chrome.storage.sync.get([request.id, 'global'], function (playsData) {
             response.plays = playsData[request.id].plays;
             response.watched = playsData[request.id].watched;
+            response.global = playsData.global;
             sendResponse(response);
         });
     });

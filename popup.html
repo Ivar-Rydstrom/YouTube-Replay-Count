@@ -1,7 +1,53 @@
 <!DOCTYPE html>
 <html>
+    <head>
+        <style>
+            .title {
+                font-size: 15px;
+                white-space: nowrap;
+                margin-bottom: 15px;
+            };
+            .container {
+                width: auto;
+                height: auto;
+                display: block;
+            }
+            .threshold-slider {
+                display: block;
+                width: 75%;
+                float: left;
+            };
+            #display {
+                display: block;
+                width: 25%;
+                float: left;
+            };
+            .cf {
+                margin-top: 3px;
+                padding-top: 0px;
+            };
+            .cf:before, .cf:after {
+                content:"";
+                display:table;
+            };
+            .cf:after {
+                clear: both;
+            };
+            span {
+                text-align: center;
+            };
+        </style>
+    </head>
+    
     <body>
-        Hello World
+        <div class="container">
+            <div class="title">YouTube Replay Count</div>
+            <span>Video Watched Threshold:</span>
+            <p class="cf">
+                <input id="threshold-slider" class="threshold-slider" type="range" min="0" max="1" value="0.75" step="0.05"></input><div id="display">loading settings</div>
+            </p>
+            <script src="popup.js"></script>
+        </div>
     </body>
 
 

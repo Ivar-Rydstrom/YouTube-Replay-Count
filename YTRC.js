@@ -1,4 +1,4 @@
-var threshold = 0.75;
+var threshold;
 var count;
 var timeLast;
 var vid;
@@ -15,6 +15,7 @@ function script() {
         } else {
             count = 0;
         };
+        threshold = data.global.threshold;
         updateCount();
         updateViews();
         if (data.watched) {
@@ -53,7 +54,7 @@ function script() {
     frame.onload = function() { 
         if (frame.contentDocument.cookie.includes('plays')) {
             var plays_ = Number(frame.contentDocument.cookie.split('plays=').pop().split(';').shift());
-            chrome.runtime.sendMessage({'id': getVidId(), 'plays': plays_}, function(returnData) { console.log('returnData: ', returnData); updateCount(); updateViews();} );
+            chrome.runtime.sendMessage({'id': getVidId(), 'plays': plays_}, function(returnData) { updateCount(); updateViews(); } );
             document.cookie = "plays=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/embed/"+getVidId()+";";
             console.log('Deleted legacy cookie with '+plays_+' plays');
             count = plays_
@@ -65,7 +66,10 @@ function script() {
 function updateStorage() {
     chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
 
-        // watch percentage cookie handling
+        // update threshold with chrome storage API data
+        threshold = data.global.threshold;
+
+        // watch percentage handling
         time = vid.currentTime;
         var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(3));
         if (watchedDelta < 0) { watchedDelta = 0 };
@@ -78,7 +82,7 @@ function updateStorage() {
         };
         if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); locked = false; };
 
-        // view counter cookie handling
+        // check if watched has surpassed threshold; update count
         if (watched >= threshold && !locked) {
             locked = true;
             if (data.plays) {
@@ -89,13 +93,13 @@ function updateStorage() {
             updateViews();
         };
         chrome.runtime.sendMessage({'id': getVidId(), 'plays': count, 'watched': watched});
-        console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched);
+        console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold);
     });
 };
 
+// updates count variable with chrome storage API value
 function updateCount() {
     chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
-        console.log('count updated: ', data.plays);
         if(data.plays) {
             count = data.plays;
         } else {
@@ -104,6 +108,7 @@ function updateCount() {
     });
 };
 
+// gets ID of video on current page
 function getVidId() {
     var id = document.location.href.split('?v=')[1];
     if (id.includes('&')) {
@@ -113,6 +118,7 @@ function getVidId() {
     };
 };
 
+// visually updates view counter with count value
 function updateViews() {
     var viewCount;
     if (document.getElementsByClassName('watch-view-count')[0]) {
