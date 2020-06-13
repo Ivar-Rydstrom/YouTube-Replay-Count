@@ -9,6 +9,7 @@ var locked = false;
 
 function script() {
     vid = document.getElementsByClassName('video-stream')[0];
+    // initialize count, threshold, locked, update UI
     chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
         if (data.plays) {
             count = data.plays;
@@ -24,17 +25,20 @@ function script() {
             };
         };
     });
+    // assign special events for update function
     timeLast = vid.currentTime;
     vid.onplay = updateStorage;
     vid.onended = updateStorage;
-
-    var started = false;
+    // calculate appropriate update rate for setInterval
     var interval;
-    if (vid.duration/20*1000 < 20000) {
-        interval = vid.duration/20*1000;
+    if (vid.duration/20*1000 > 20000) {
+        interval = 20000;
+    } else if (interval = vid.duration/20*1000 < 5000) {
+        interval = 5000;
     } else {
-        interval = 20000
+        interval = interval = vid.duration/20*1000;
     };
+    var started = false;
     vid.onloadedmetadata = function() {
         if (!started) {
             setInterval(updateStorage, interval);
@@ -81,7 +85,6 @@ function updateStorage() {
             watched = Number(watchedDelta.toFixed(3));
         };
         if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); locked = false; };
-
         // check if watched has surpassed threshold; update count
         if (watched >= threshold && !locked) {
             locked = true;
@@ -92,6 +95,7 @@ function updateStorage() {
             };
             updateViews();
         };
+
         chrome.runtime.sendMessage({'id': getVidId(), 'plays': count, 'watched': watched});
         console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold);
     });
