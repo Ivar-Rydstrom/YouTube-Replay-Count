@@ -4,11 +4,27 @@ var timeLast;
 var vid;
 var time;
 var locked = false;
-
+var href;
 
 
 function script() {
-    vid = document.getElementsByClassName('video-stream')[0];
+    // force refresh window on new video page if not in disable_polymer=1
+    href = window.location.href;
+    if (!window.location.href.includes('disable_polymer=1')) {
+        var bodyList = document.querySelector("body");
+        observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (href != document.location.href) {
+                        window.location.reload();
+                };
+            });
+        });
+        var config = {
+            childList: true,
+            subtree: true
+        };
+        observer.observe(bodyList, config);
+    };
     // initialize count, threshold, locked, update UI
     chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
         if (data.plays) {
@@ -26,11 +42,12 @@ function script() {
         };
     });
     // assign special events for update function
+    vid = document.getElementsByClassName('video-stream')[0];
     timeLast = vid.currentTime;
-    vid.onplay = updateStorage;
-    vid.onended = updateStorage;
-    // calculate appropriate update rate for setInterval
+    vid.onplay = updateStorage();
+    vid.onended = updateStorage();
 
+    // calculate appropriate update rate for setInterval
     function getCalculatedInterval() {
         var interval;
         if (vid.duration/20*1000 > 20000) {
@@ -47,11 +64,13 @@ function script() {
         if (!started) {
             setInterval(updateStorage, getCalculatedInterval());
             started = true;
+            console.log('started1 : ' + getCalculatedInterval())
         };
     };
     if ((vid.readyState == 1 || vid.readyState >= 2) && !started) {
         setInterval(updateStorage, getCalculatedInterval());
         started = true;
+        console.log('started2 : ' + getCalculatedInterval())
     };
 
     // legacy version handling
@@ -101,7 +120,7 @@ function updateStorage() {
         };
 
         chrome.runtime.sendMessage({'id': getVidId(), 'plays': count, 'watched': watched});
-        console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold);
+        console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold + ' Plays: ' + count);
     });
 };
 
