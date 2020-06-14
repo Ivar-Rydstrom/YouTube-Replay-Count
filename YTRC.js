@@ -11,19 +11,19 @@ var href;
 function script() {
     // initialize count, threshold, thresholdLocked, update UI
     chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
-        if (data.plays) {
+        if (data.plays !== undefined) {
             count = data.plays;
         } else {
             count = 0;
         };
         threshold = data.global.threshold;
-        updateCount();
-        updateViews();
-        if (data.watched) {
-            if (watched.data >= threshold) {
+        if (data.watched !== undefined) {
+            if (data.watched >= threshold) {
                 thresholdLocked = true;
             };
         };
+        updateCount();
+        updateViews();
     });
     // assign special events for update function
     vid = document.getElementsByClassName('video-stream')[0];
@@ -90,7 +90,6 @@ function updateStorage() {
             } else {
                 watched = Number(watchedDelta.toFixed(3));
             };
-            if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); thresholdLocked = false; };
             // check if watched has surpassed threshold; update count
             if (watched >= threshold && !thresholdLocked) {
                 thresholdLocked = true;
@@ -101,6 +100,7 @@ function updateStorage() {
                 };
                 updateViews();
             };
+            if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); thresholdLocked = false; };
 
             chrome.runtime.sendMessage({'id': getVidId(), 'plays': count, 'watched': watched});
             console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold + ' Plays: ' + count);
