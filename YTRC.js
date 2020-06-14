@@ -3,29 +3,13 @@ var count;
 var timeLast;
 var vid;
 var time;
-var locked = false;
+var thresholdLocked = false;
+var updateLocked = false;
 var href;
 
 
 function script() {
-    // force refresh window on new video page if not in disable_polymer=1
-    href = window.location.href;
-    if (!window.location.href.includes('disable_polymer=1')) {
-        var bodyList = document.querySelector("body");
-        observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (href != document.location.href) {
-                        window.location.reload();
-                };
-            });
-        });
-        var config = {
-            childList: true,
-            subtree: true
-        };
-        observer.observe(bodyList, config);
-    };
-    // initialize count, threshold, locked, update UI
+    // initialize count, threshold, thresholdLocked, update UI
     chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
         if (data.plays) {
             count = data.plays;
@@ -37,15 +21,15 @@ function script() {
         updateViews();
         if (data.watched) {
             if (watched.data >= threshold) {
-                locked = true;
+                thresholdLocked = true;
             };
         };
     });
     // assign special events for update function
     vid = document.getElementsByClassName('video-stream')[0];
     timeLast = vid.currentTime;
-    vid.onplay = updateStorage();
-    vid.onended = updateStorage();
+    vid.addEventListener('play', function() { updateStorage(); console.log('play event') } );
+    vid.addEventListener('ended', function() { updateStorage(); console.log('ended event') } );
 
     // calculate appropriate update rate for setInterval
     function getCalculatedInterval() {
@@ -64,13 +48,11 @@ function script() {
         if (!started) {
             setInterval(updateStorage, getCalculatedInterval());
             started = true;
-            console.log('started1 : ' + getCalculatedInterval())
         };
     };
     if ((vid.readyState == 1 || vid.readyState >= 2) && !started) {
         setInterval(updateStorage, getCalculatedInterval());
         started = true;
-        console.log('started2 : ' + getCalculatedInterval())
     };
 
     // legacy version handling
@@ -91,48 +73,52 @@ function script() {
 };
 
 function updateStorage() {
-    chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
+    if (!updateLocked) {
+        chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
 
-        // update threshold with chrome storage API data
-        threshold = data.global.threshold;
+            // update threshold with chrome storage API data
+            threshold = data.global.threshold;
 
-        // watch percentage handling
-        time = vid.currentTime;
-        var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(3));
-        if (watchedDelta < 0) { watchedDelta = 0 };
-        timeLast = time;
-        var watched;
-        if (data.watched) {
-            watched = Number((watchedDelta + data.watched).toFixed(3));
-        } else {
-            watched = Number(watchedDelta.toFixed(3));
-        };
-        if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); locked = false; };
-        // check if watched has surpassed threshold; update count
-        if (watched >= threshold && !locked) {
-            locked = true;
-            if (data.plays) {
-                count = Number(data.plays) + 1;
+            // watch percentage handling
+            time = vid.currentTime;
+            var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(3));
+            if (watchedDelta < 0) { watchedDelta = 0 };
+            timeLast = time;
+            var watched;
+            if (data.watched) {
+                watched = Number((watchedDelta + data.watched).toFixed(3));
             } else {
-                count = 1;
+                watched = Number(watchedDelta.toFixed(3));
             };
-            updateViews();
-        };
+            if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); thresholdLocked = false; };
+            // check if watched has surpassed threshold; update count
+            if (watched >= threshold && !thresholdLocked) {
+                thresholdLocked = true;
+                if (data.plays) {
+                    count = Number(data.plays) + 1;
+                } else {
+                    count = 1;
+                };
+                updateViews();
+            };
 
-        chrome.runtime.sendMessage({'id': getVidId(), 'plays': count, 'watched': watched});
-        console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold + ' Plays: ' + count);
-    });
+            chrome.runtime.sendMessage({'id': getVidId(), 'plays': count, 'watched': watched});
+            console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold + ' Plays: ' + count);
+        });
+    };
 };
 
 // updates count variable with chrome storage API value
 function updateCount() {
-    chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
-        if(data.plays) {
-            count = data.plays;
-        } else {
-            count = 0;
-        };
-    });
+    if (!updateLocked) {
+        chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
+            if(data.plays) {
+                count = data.plays;
+            } else {
+                count = 0;
+            };
+        });
+    };
 };
 
 // gets ID of video on current page
@@ -158,4 +144,32 @@ function updateViews() {
     viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' ' + plays;
 };
 
-window.onload = script;
+window.addEventListener('load', function() {
+    // force refresh window on new video page if not in disable_polymer=1
+    href = window.location.href;
+    if (!window.location.href.includes('disable_polymer=1')) {
+        var bodyList = document.querySelector("body");
+        observer = new MutationObserver(function(mutations) {
+            // mutations.forEach(function(mutation) {
+            //     if (href != document.location.href) {
+            //         updateLocked = true;
+            //         window.location.reload();
+            //     };
+            // });
+            if (href != document.location.href) {
+                updateLocked = true;
+                console.log('reloaded')
+                window.location.reload();
+            };
+        });
+        var config = {
+            childList: true,
+            subtree: true
+        };
+        observer.observe(bodyList, config);
+    };
+    if (window.location.href.includes('/watch')) {
+        script();
+        // updateViews();
+    };
+});
