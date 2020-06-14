@@ -30,23 +30,27 @@ function script() {
     vid.onplay = updateStorage;
     vid.onended = updateStorage;
     // calculate appropriate update rate for setInterval
-    var interval;
-    if (vid.duration/20*1000 > 20000) {
-        interval = 20000;
-    } else if (interval = vid.duration/20*1000 < 5000) {
-        interval = 5000;
-    } else {
-        interval = interval = vid.duration/20*1000;
+
+    function getCalculatedInterval() {
+        var interval;
+        if (vid.duration/20*1000 > 20000) {
+            interval = 20000;
+        } else if (interval = vid.duration/20*1000 < 5000) {
+            interval = 5000;
+        } else {
+            interval = interval = vid.duration/20*1000;
+        };
+        return interval;
     };
     var started = false;
     vid.onloadedmetadata = function() {
         if (!started) {
-            setInterval(updateStorage, interval);
+            setInterval(updateStorage, getCalculatedInterval());
             started = true;
         };
     };
     if ((vid.readyState == 1 || vid.readyState >= 2) && !started) {
-        setInterval(updateStorage, interval);
+        setInterval(updateStorage, getCalculatedInterval());
         started = true;
     };
 
