@@ -148,13 +148,11 @@ window.addEventListener('load', function() {
     href = window.location.href;
     var bodyList = document.querySelector("body");
     observer = new MutationObserver(function(mutations) {
-        if (href != document.location.href) {
-            console.log('reloaded1')
+        if (href != document.location.href && (document.location.href.includes('/watch'))) {
             updateLocked = true;
             window.location.reload();
         };
-        if ((href != document.location.href) && !reloadAttempted) {
-            console.log('reloaded2')
+        if ((href != document.location.href) && !reloadAttempted && (document.location.href.includes('/watch'))) {
             updateLocked = true;
             reloadAttempted = true;
             console.log('reloaded')
