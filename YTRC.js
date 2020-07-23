@@ -137,12 +137,8 @@ function getVidId() {
 
 // visually updates view counter with count value
 function updateViews() {
-    var viewCount;
-    if (document.getElementsByClassName('watch-view-count')[0]) {
-        viewCount = document.getElementsByClassName('watch-view-count')[0];
-    } else {
-        viewCount = document.getElementsByClassName('view-count')[0];
-    };
+    console.log('updated Views')
+    var viewCount = document.getElementsByClassName('view-count')[0];
     var plays;
     if (count == 1) { plays = 'play' } else { plays = 'plays' };
     viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' ' + plays;
@@ -175,6 +171,12 @@ window.addEventListener('load', function() {
     // begin script
     if (window.location.href.includes('/watch')) {
         script();
-        // updateViews();
+        var viewMutationObserver = new MutationObserver(function(mutations, observer) {
+            if (document.querySelector('.view-count') != undefined) {
+                updateViews();
+                observer.disconnect();
+            };
+        });
+        viewMutationObserver.observe(docment.querySelector('body'), {attributes: true, subtree: true})
     };
 });
