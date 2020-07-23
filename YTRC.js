@@ -6,11 +6,20 @@ var time;
 var thresholdLocked = false;
 var updateLocked = false;
 var href;
-
+var reloadAttempted = false;
+var setIntervalVar;
 
 function script() {
+    // assign special events for update function
+    vid = document.getElementsByClassName('video-stream')[0];
+    timeLast = vid.currentTime;
+    vid.onplay = function() { updateStorage(); console.log('play event') };
+    vid.onended = function() { updateStorage(); console.log('ended event') };
+
     // initialize count, threshold, thresholdLocked, update UI
+    console.log('vid: ', getVidId())
     chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
+        console.log('data', data)
         if (data.plays !== undefined) {
             count = data.plays;
         } else {
@@ -25,11 +34,6 @@ function script() {
         updateCount();
         updateViews();
     });
-    // assign special events for update function
-    vid = document.getElementsByClassName('video-stream')[0];
-    timeLast = vid.currentTime;
-    vid.addEventListener('play', function() { updateStorage(); console.log('play event') } );
-    vid.addEventListener('ended', function() { updateStorage(); console.log('ended event') } );
 
     // calculate appropriate update rate for setInterval
     function getCalculatedInterval() {
@@ -51,7 +55,7 @@ function script() {
         };
     };
     if ((vid.readyState == 1 || vid.readyState >= 2) && !started) {
-        setInterval(updateStorage, getCalculatedInterval());
+        setIntervalVar = setInterval(updateStorage, getCalculatedInterval());
         started = true;
     };
 
@@ -145,29 +149,30 @@ function updateViews() {
 };
 
 window.addEventListener('load', function() {
-    // force refresh window on new video page if not in disable_polymer=1
     href = window.location.href;
-    if (!window.location.href.includes('disable_polymer=1')) {
-        var bodyList = document.querySelector("body");
-        observer = new MutationObserver(function(mutations) {
-            // mutations.forEach(function(mutation) {
-            //     if (href != document.location.href) {
-            //         updateLocked = true;
-            //         window.location.reload();
-            //     };
-            // });
-            if (href != document.location.href) {
-                updateLocked = true;
-                console.log('reloaded')
-                window.location.reload();
-            };
-        });
-        var config = {
-            childList: true,
-            subtree: true
+    var bodyList = document.querySelector("body");
+    observer = new MutationObserver(function(mutations) {
+        if (href != document.location.href) {
+            console.log('reloaded1')
+            updateLocked = true;
+            window.location.reload();
         };
-        observer.observe(bodyList, config);
+        if ((href != document.location.href) && !reloadAttempted) {
+            console.log('reloaded2')
+            updateLocked = true;
+            reloadAttempted = true;
+            console.log('reloaded')
+            window.location.reload();
+            clearInterval(setIntervalVar);
+            script();
+        };
+    });
+    var config = {
+        childList: true,
+        subtree: true
     };
+    observer.observe(bodyList, config);
+    // begin script
     if (window.location.href.includes('/watch')) {
         script();
         // updateViews();

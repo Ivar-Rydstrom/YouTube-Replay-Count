@@ -64,6 +64,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             response.plays = playsData[request.id].plays;
             response.watched = playsData[request.id].watched;
             response.global = playsData.global;
+            console.log('sending resposne', response)
             sendResponse(response);
         });
     });

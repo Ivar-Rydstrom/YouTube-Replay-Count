@@ -17,7 +17,7 @@
     "48": "assets/ReplayIcon48.png",
     "128": "assets/ReplayIcon128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "webNavigation"],
   "background": {
       "scripts": ["background.js"],
       "persistent": false
@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.youtube.com/watch*"
+        "*://*.youtube.com/*"
       ],
       "js": ["YTRC.js"] 
     }
