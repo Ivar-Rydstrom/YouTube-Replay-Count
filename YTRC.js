@@ -1,131 +1,107 @@
-var threshold;
+// ==UserScript==
+// @name         YouTube Replay Counter
+// @match        *://www.youtube.com/watch*
+// @author       Ivar Rydstrom
+// @run-at       document-start
+// @grant        GM_log
+// ==/UserScript==
+
+var threshold = 0.75;
 var count;
 var timeLast;
 var vid;
 var time;
-var thresholdLocked = false;
-var updateLocked = false;
-var href;
-var reloadAttempted = false;
-var setIntervalVar;
+var locked = false;
+
+var frame = document.createElement('iframe');
+frame.src = 'https://www.youtube.com/embed/' + getVidId();
+frame.id = 'frame';
+frame.height = 0;
 
 function script() {
-    // assign special events for update function
-    vid = document.getElementsByClassName('video-stream')[0];
-    timeLast = vid.currentTime;
-    vid.onplay = function() { updateStorage(); console.log('play event') };
-    vid.onended = function() { updateStorage(); console.log('ended event') };
-
-    // initialize count, threshold, thresholdLocked, update UI
-    console.log('vid: ', getVidId())
-    chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
-        console.log('data', data)
-        if (data.plays !== undefined) {
-            count = data.plays;
-        } else {
-            count = 0;
-        };
-        threshold = data.global.threshold;
-        if (data.watched !== undefined) {
-            if (data.watched >= threshold) {
-                thresholdLocked = true;
-            };
-        };
+    document.body.appendChild(frame);
+    frame.onload = function() {
+        vid = document.getElementsByClassName('video-stream')[0];
         updateCount();
         updateViews();
-    });
-
-    // calculate appropriate update rate for setInterval
-    function getCalculatedInterval() {
-        var interval;
-        if (vid.duration/20*1000 > 20000) {
-            interval = 20000;
-        } else if (interval = vid.duration/20*1000 < 5000) {
-            interval = 5000;
-        } else {
-            interval = interval = vid.duration/20*1000;
+        if (frame.contentDocument.cookie.includes('watched')) {
+            if (Number(frame.contentDocument.cookie.split('watched=').pop().split(';').shift()) >= threshold) {
+                locked = true;
+            };
         };
-        return interval;
-    };
-    var started = false;
-    vid.onloadedmetadata = function() {
-        if (!started) {
-            setInterval(updateStorage, getCalculatedInterval());
+        timeLast = vid.currentTime;
+        vid.onplay = updateCookie;
+        vid.onended = updateCookie;
+
+        var started = false;
+        var interval;
+        if (vid.duration/20*1000 < 20000) {
+            interval = vid.duration/20*1000;
+        } else {
+            interval = 20000
+        };
+        vid.onloadedmetadata = function() {
+            if (!started) {
+                setInterval(updateCookie, interval);
+                started = true;
+            };
+        };
+        if ((vid.readyState == 1 || vid.readyState >= 2) && !started) {
+            setInterval(updateCookie, interval);
             started = true;
         };
     };
-    if ((vid.readyState == 1 || vid.readyState >= 2) && !started) {
-        setIntervalVar = setInterval(updateStorage, getCalculatedInterval());
-        started = true;
-    };
+};
 
-    // legacy version handling
-    var frame = document.createElement('iframe');
-    frame.src = 'https://www.youtube.com/embed/' + getVidId();
-    frame.id = 'frame';
-    frame.height = 0;
-    frame.onload = function() { 
-        if (frame.contentDocument.cookie.includes('plays')) {
-            var plays_ = Number(frame.contentDocument.cookie.split('plays=').pop().split(';').shift());
-            chrome.runtime.sendMessage({'id': getVidId(), 'plays': plays_}, function(returnData) { updateCount(); updateViews(); } );
-            document.cookie = "plays=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/embed/"+getVidId()+";";
-            console.log('Deleted legacy cookie with '+plays_+' plays');
-            count = plays_
+function updateCookie() {
+    var crossCookies = frame.contentDocument.cookie;
+
+    // watch percentage cookie handling
+    time = vid.currentTime;
+    var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(3));
+    if (watchedDelta < 0) { watchedDelta = 0 };
+    timeLast = time;
+    var watched;
+    if (crossCookies.includes('watched')) {
+        watched = Number(crossCookies.split('watched=').pop().split(';').shift());
+        if (watched) {
+            watched += watchedDelta;
+            watched = Number(watched.toFixed(3))
+        } else {
+            watched = Number(watchedDelta.toFixed(3));
+        }
+    } else {
+        watched = Number(watchedDelta.toFixed(3));
+    };
+    if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); locked = false; };
+    document.cookie = "watched="+watched+ "; path=/embed/"+getVidId()+"; SameSite; Secure;";
+
+    // view counter cookie handling
+    if (watched >= threshold && !locked) {
+        locked = true;
+        if (crossCookies.includes('plays=')) {
+            count = crossCookies.split('plays=').pop().split(';').shift();
+            count++
+        } else {
+            count = 1;
         };
+        var date = new Date();
+        date.setFullYear(date.getFullYear() + 10);
+        document.cookie = "plays="+count+ "; expires="+date.toUTCString()+"; path=/embed/"+getVidId()+"; SameSite; Secure;";
+        updateViews();
     };
-    document.body.appendChild(frame);
+    GM_log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched);
 };
 
-function updateStorage() {
-    if (!updateLocked) {
-        chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
-
-            // update threshold with chrome storage API data
-            threshold = data.global.threshold;
-
-            // watch percentage handling
-            time = vid.currentTime;
-            var watchedDelta = Number(((time - timeLast)/vid.duration).toFixed(3));
-            if (watchedDelta < 0) { watchedDelta = 0 };
-            timeLast = time;
-            var watched;
-            if (data.watched) {
-                watched = Number((watchedDelta + data.watched).toFixed(3));
-            } else {
-                watched = Number(watchedDelta.toFixed(3));
-            };
-            // check if watched has surpassed threshold; update count
-            if (watched >= threshold && !thresholdLocked) {
-                thresholdLocked = true;
-                if (data.plays) {
-                    count = Number(data.plays) + 1;
-                } else {
-                    count = 1;
-                };
-                updateViews();
-            };
-            if (watched >= 1) { watched = Number((watched - 1).toFixed(3)); thresholdLocked = false; };
-
-            chrome.runtime.sendMessage({'id': getVidId(), 'plays': count, 'watched': watched});
-            console.log('watchedDelta: ' + watchedDelta + ' Watched: ' + watched + ' Threshold ' + data.global.threshold + ' Plays: ' + count);
-        });
-    };
-};
-
-// updates count variable with chrome storage API value
 function updateCount() {
-    if (!updateLocked) {
-        chrome.runtime.sendMessage({"id": getVidId()}, function(data) {
-            if(data.plays) {
-                count = data.plays;
-            } else {
-                count = 0;
-            };
-        });
+    var crossCookies = frame.contentDocument.cookie;
+    if(crossCookies.includes('plays=')) {
+        count = crossCookies.split("plays=").pop().split(';').shift();
+    } else {
+        count = 0;
     };
 };
 
-// gets ID of video on current page
 function getVidId() {
     var id = document.location.href.split('?v=')[1];
     if (id.includes('&')) {
@@ -135,46 +111,20 @@ function getVidId() {
     };
 };
 
-// visually updates view counter with count value
 function updateViews() {
-    console.log('updated Views')
-    var viewCount = document.getElementsByClassName('view-count')[0];
+    var viewCount;
+    if (!document.querySelector('#replay-counter')) {
+        viewCount = document.createElement('span');
+        viewCount.id = 'replay-counter';
+        viewCount.classList.add('bold');
+        viewCount.classList.add('yt-formatted-string');
+        document.querySelector('#info-container.ytd-watch-info-text > yt-formatted-string#info').appendChild(viewCount);
+    } else {
+        viewCount = document.querySelector('#replay-counter');
+    };
     var plays;
     if (count == 1) { plays = 'play' } else { plays = 'plays' };
-    viewCount.innerHTML = viewCount.innerHTML.split(' - ')[0] + ' - ' + count + ' ' + plays;
+    viewCount.innerHTML = `  ${count} ${plays}`;
 };
 
-window.addEventListener('load', function() {
-    href = window.location.href;
-    var bodyList = document.querySelector("body");
-    observer = new MutationObserver(function(mutations) {
-        if (href != document.location.href && (document.location.href.includes('/watch'))) {
-            updateLocked = true;
-            window.location.reload();
-        };
-        if ((href != document.location.href) && !reloadAttempted && (document.location.href.includes('/watch'))) {
-            updateLocked = true;
-            reloadAttempted = true;
-            console.log('reloaded')
-            window.location.reload();
-            clearInterval(setIntervalVar);
-            script();
-        };
-    });
-    var config = {
-        childList: true,
-        subtree: true
-    };
-    observer.observe(bodyList, config);
-    // begin script
-    if (window.location.href.includes('/watch')) {
-        script();
-        var viewMutationObserver = new MutationObserver(function(mutations, observer) {
-            if (document.querySelector('.view-count') != undefined) {
-                updateViews();
-                observer.disconnect();
-            };
-        });
-        viewMutationObserver.observe(docment.querySelector('body'), {attributes: true, subtree: true})
-    };
-});
+window.onload = script;
